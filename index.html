@@ -3,131 +3,270 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Xem TV Tự Động Dò Kênh</title>
+  <title>Xem TV Online - Siêu Dò Link Dự Phòng</title>
   
-  <!-- Nhúng thư viện HLS.js để phát video m3u8 -->
+  <!-- Thư viện phát video HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  
+
   <style>
+    * { box-sizing: border-box; }
     body {
       background-color: #0d1117;
       color: #ffffff;
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
       margin: 0;
+      padding: 15px;
     }
 
-    h2 { color: #58a6ff; }
+    h1 {
+      text-align: center;
+      color: #58a6ff;
+      font-size: 22px;
+      margin-bottom: 15px;
+    }
 
-    /* Khung chứa video */
-    .video-container {
-      max-width: 800px;
-      margin: 20px auto;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    .main-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .main-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+      }
+    }
+
+    .player-section {
+      background: #161b22;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
     }
 
     video {
       width: 100%;
-      height: auto;
-      display: block;
+      aspect-ratio: 16/9;
+      background: #000;
+      border-radius: 6px;
     }
 
-    /* Dòng trạng thái thông báo */
     #status {
-      margin-top: 15px;
-      font-size: 16px;
+      margin-top: 10px;
+      font-size: 14px;
       font-weight: bold;
       color: #e3b341;
+      padding: 10px;
+      background: #0d1117;
+      border-radius: 4px;
+      word-break: break-all;
+    }
+
+    .playlist-section {
+      background: #161b22;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .channel-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      margin-bottom: 6px;
+      background: #21262d;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .channel-item:hover { background: #30363d; }
+    .channel-item.active { background: #1f6feb; }
+
+    .channel-logo {
+      width: 35px;
+      height: 35px;
+      object-fit: contain;
+      background: #000;
+      border-radius: 4px;
+    }
+
+    .channel-title {
+      font-size: 14px;
+      font-weight: 500;
     }
   </style>
 </head>
 <body>
 
-  <h2>📺 Trình Phát TV Tự Động Dò Nguồn Sống</h2>
+  <h1>📺 DANH SÁCH KÊNH TV ONLINE VÀ DÒ DỰ PHÒNG</h1>
 
-  <div class="video-container">
-    <video id="videoPlayer" controls autoplay muted></video>
+  <div class="main-layout">
+    <div class="player-section">
+      <video id="videoPlayer" controls autoplay muted></video>
+      <div id="status">⏳ Đang tải file tv.m3u...</div>
+    </div>
+
+    <div class="playlist-section" id="channelList"></div>
   </div>
 
-  <div id="status">⏳ Đang khởi tạo...</div>
-
   <script>
-    // -------------------------------------------------------------
-    // CHỖ NÀY: Dán danh sách các link nguồn phát của bạn vào đây
-    // Nó sẽ thử từ trên xuống dưới, link 1 lỗi sẽ tự nhảy sang link 2
-    // -------------------------------------------------------------
-    const channelSources = [
-      "https://link-kenh-loi-hoac-die-1.m3u8", // Giả lập link chết
-      "https://link-kenh-loi-hoac-die-2.m3u8", // Giả lập link chết 2
-      "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" // Link chuẩn đang sống (để test)
-    ];
-
-    let currentIndex = 0;
+    let channels = [];
+    let currentChannel = null;
+    let currentSourceIndex = 0;
+    let hls = new Hls();
+    let timeoutTimer = null;
+    
     const video = document.getElementById('videoPlayer');
     const statusText = document.getElementById('status');
-    let hls = new Hls();
 
-    function playChannel(index) {
-      // Nếu đã thử hết các link trong danh sách mà vẫn lỗi
-      if (index >= channelSources.length) {
+    // 1. Tải M3U
+    async function loadM3U() {
+      try {
+        const response = await fetch('tv.m3u?t=' + Date.now());
+        if (!response.ok) throw new Error("Không mở được file tv.m3u!");
+        const data = await response.text();
+        parseM3U(data);
+      } catch (err) {
         statusText.style.color = "#f85149";
-        statusText.innerText = "❌ Tất cả các nguồn phát của kênh này hiện đều bị lỗi!";
+        statusText.innerText = "❌ Lỗi: " + err.message;
+      }
+    }
+
+    // 2. Đọc file M3U và lấy tất cả các link (kể cả giấu sau dấu #)
+    function parseM3U(content) {
+      const lines = content.split('\n');
+      channels = [];
+      let tempChannel = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+
+        if (line.startsWith('#EXTINF:')) {
+          if (tempChannel && tempChannel.sources.length > 0) {
+            channels.push(tempChannel);
+          }
+          const nameMatch = line.match(/,(.+)$/);
+          const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+
+          tempChannel = {
+            name: nameMatch ? nameMatch[1].trim() : 'Kênh TV',
+            logo: logoMatch ? logoMatch[1] : '',
+            sources: []
+          };
+        } else if (tempChannel) {
+          // Bắt link chuẩn hoặc link bị comment dạng #http
+          if (line.startsWith('http://') || line.startsWith('https://')) {
+            tempChannel.sources.push(line);
+          } else if (line.startsWith('#http://') || line.startsWith('#https://')) {
+            tempChannel.sources.push(line.substring(1));
+          }
+        }
+      }
+      if (tempChannel && tempChannel.sources.length > 0) {
+        channels.push(tempChannel);
+      }
+
+      renderPlaylist();
+      if (channels.length > 0) playChannel(0, 0);
+    }
+
+    // 3. Tạo danh sách kênh
+    function renderPlaylist() {
+      const listContainer = document.getElementById('channelList');
+      listContainer.innerHTML = '';
+
+      channels.forEach((channel, index) => {
+        const item = document.createElement('div');
+        item.className = 'channel-item';
+        item.id = `channel-${index}`;
+        item.onclick = () => playChannel(index, 0);
+
+        const logoImg = channel.logo 
+          ? `<img class="channel-logo" src="${channel.logo}" onerror="this.style.display='none'">`
+          : `<div class="channel-logo"></div>`;
+
+        item.innerHTML = `${logoImg}<div class="channel-title">${channel.name}</div>`;
+        listContainer.appendChild(item);
+      });
+    }
+
+    // 4. Phát kênh & Tự động nhảy Server nếu quá 4s không load được
+    function playChannel(channelIndex, sourceIndex) {
+      clearTimeout(timeoutTimer);
+      currentChannel = channels[channelIndex];
+      currentSourceIndex = sourceIndex;
+
+      document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(`channel-${channelIndex}`);
+      if (activeEl) activeEl.classList.add('active');
+
+      // Nếu đã thử hết các nguồn
+      if (sourceIndex >= currentChannel.sources.length) {
+        statusText.style.color = "#f85149";
+        statusText.innerText = `❌ Kênh "${currentChannel.name}" bị lỗi tất cả ${currentChannel.sources.length} Server!`;
         return;
       }
 
+      const rawUrl = currentChannel.sources[sourceIndex];
+      
       statusText.style.color = "#e3b341";
-      statusText.innerText = `🔄 Đang thử kết nối Server ${index + 1}...`;
-      const currentUrl = channelSources[index];
+      statusText.innerText = `🔄 [${currentChannel.name}] Đang thử Server ${sourceIndex + 1}/${currentChannel.sources.length}...`;
+
+      // Cấu hình Bộ đếm thời gian: Nếu quá 4 giây không chạy -> Nhảy server tiếp theo ngay!
+      timeoutTimer = setTimeout(() => {
+        console.warn(`Server ${sourceIndex + 1} quá thời gian chờ, tự động nhảy nguồn tiếp theo...`);
+        playChannel(channelIndex, sourceIndex + 1);
+      }, 4500);
 
       if (Hls.isSupported()) {
-        hls.destroy(); // Xóa luồng cũ trước khi thử luồng mới
-        
-        // Cấu hình thời gian chờ: Nếu 6 giây không tải được thì coi như kênh lỗi
+        hls.destroy();
         hls = new Hls({
-          manifestLoadingTimeOut: 6000,
-          levelLoadingTimeOut: 6000
+          manifestLoadingTimeOut: 3000,
+          manifestLoadingMaxRetry: 0,
+          fragLoadingTimeOut: 3000,
+          fragLoadingMaxRetry: 0
         });
 
-        hls.loadSource(currentUrl);
+        hls.loadSource(rawUrl);
         hls.attachMedia(video);
 
-        // Bắt lỗi hệ thống
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          clearTimeout(timeoutTimer);
+          statusText.style.color = "#3fb950";
+          statusText.innerText = `✅ Đang phát: ${currentChannel.name} (Server ${sourceIndex + 1})`;
+          video.play().catch(() => {});
+        });
+
         hls.on(Hls.Events.ERROR, function (event, data) {
           if (data.fatal) {
-            console.log(`Server ${index + 1} lỗi, đang chuyển sang Server ${index + 2}...`);
-            tryNextSource();
+            clearTimeout(timeoutTimer);
+            playChannel(channelIndex, sourceIndex + 1);
           }
         });
 
-        // Tải thành công
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {
-          statusText.style.color = "#3fb950";
-          statusText.innerText = `✅ Đã kết nối thành công Server ${index + 1}!`;
-          video.play().catch(() => {
-            // Trường hợp trình duyệt chặn tự phát tiếng
-            statusText.innerText += " (Bấm Play trên video để bật tiếng)";
-          });
-        });
-
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Dành riêng cho trình duyệt Safari trên iPhone/Mac
-        video.src = currentUrl;
-        video.onerror = tryNextSource;
+        video.src = rawUrl;
+        video.onloadeddata = () => {
+          clearTimeout(timeoutTimer);
+          statusText.style.color = "#3fb950";
+          statusText.innerText = `✅ Đang phát: ${currentChannel.name} (Server ${sourceIndex + 1})`;
+          video.play();
+        };
+        video.onerror = () => {
+          clearTimeout(timeoutTimer);
+          playChannel(channelIndex, sourceIndex + 1);
+        };
       }
     }
 
-    function tryNextSource() {
-      currentIndex++;
-      playChannel(currentIndex);
-    }
-
-    // Chạy chương trình
-    playChannel(currentIndex);
+    loadM3U();
   </script>
-
 </body>
 </html>
