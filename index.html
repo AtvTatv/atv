@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Xem TV Online - Siêu Dò Link Dự Phòng</title>
+  <title>Xem TV Online - Tự Động Dò Nguồn Dự Phòng</title>
   
-  <!-- Thư viện phát video HLS.js -->
+  <!-- Thư viện HLS.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
   <style>
@@ -120,17 +120,20 @@
     let channels = [];
     let currentChannel = null;
     let currentSourceIndex = 0;
-    let hls = new Hls();
+    let hls = null;
     let timeoutTimer = null;
     
     const video = document.getElementById('videoPlayer');
     const statusText = document.getElementById('status');
 
-    // 1. Tải M3U
+    // CORS Proxy hỗ trợ vượt rào cản nhà mạng trên Web
+    const CORS_PROXY = "https://corsproxy.io/?";
+
+    // 1. Tải danh sách M3U
     async function loadM3U() {
       try {
         const response = await fetch('tv.m3u?t=' + Date.now());
-        if (!response.ok) throw new Error("Không mở được file tv.m3u!");
+        if (!response.ok) throw new Error("Không tìm thấy hoặc không mở được file tv.m3u!");
         const data = await response.text();
         parseM3U(data);
       } catch (err) {
@@ -139,7 +142,7 @@
       }
     }
 
-    // 2. Đọc file M3U và lấy tất cả các link (kể cả giấu sau dấu #)
+    // 2. Phân tích cú pháp M3U (Hỗ trợ cả link thường lẫn link giấu sau dấu #)
     function parseM3U(content) {
       const lines = content.split('\n');
       channels = [];
@@ -161,7 +164,6 @@
             sources: []
           };
         } else if (tempChannel) {
-          // Bắt link chuẩn hoặc link bị comment dạng #http
           if (line.startsWith('http://') || line.startsWith('https://')) {
             tempChannel.sources.push(line);
           } else if (line.startsWith('#http://') || line.startsWith('#https://')) {
@@ -177,7 +179,7 @@
       if (channels.length > 0) playChannel(0, 0);
     }
 
-    // 3. Tạo danh sách kênh
+    // 3. Hiển thị danh sách kênh
     function renderPlaylist() {
       const listContainer = document.getElementById('channelList');
       listContainer.innerHTML = '';
@@ -197,9 +199,19 @@
       });
     }
 
-    // 4. Phát kênh & Tự động nhảy Server nếu quá 4s không load được
-    function playChannel(channelIndex, sourceIndex) {
+    // 4. Dọn dẹp trình phát HLS cũ
+    function destroyHls() {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
       clearTimeout(timeoutTimer);
+    }
+
+    // 5. Phát kênh & Tự động dò Server tiếp theo khi gặp lỗi
+    function playChannel(channelIndex, sourceIndex, useProxy = false) {
+      destroyHls();
+
       currentChannel = channels[channelIndex];
       currentSourceIndex = sourceIndex;
 
@@ -207,34 +219,40 @@
       const activeEl = document.getElementById(`channel-${channelIndex}`);
       if (activeEl) activeEl.classList.add('active');
 
-      // Nếu đã thử hết các nguồn
+      // Nếu đã thử hết các nguồn (kể cả nguồn qua Proxy)
       if (sourceIndex >= currentChannel.sources.length) {
         statusText.style.color = "#f85149";
-        statusText.innerText = `❌ Kênh "${currentChannel.name}" bị lỗi tất cả ${currentChannel.sources.length} Server!`;
+        statusText.innerText = `❌ Kênh "${currentChannel.name}" không thể kết nối tới tất cả ${currentChannel.sources.length} Server!`;
         return;
       }
 
-      const rawUrl = currentChannel.sources[sourceIndex];
-      
-      statusText.style.color = "#e3b341";
-      statusText.innerText = `🔄 [${currentChannel.name}] Đang thử Server ${sourceIndex + 1}/${currentChannel.sources.length}...`;
+      let rawUrl = currentChannel.sources[sourceIndex];
+      let targetUrl = useProxy ? CORS_PROXY + encodeURIComponent(rawUrl) : rawUrl;
 
-      // Cấu hình Bộ đếm thời gian: Nếu quá 4 giây không chạy -> Nhảy server tiếp theo ngay!
+      statusText.style.color = "#e3b341";
+      statusText.innerText = `🔄 [${currentChannel.name}] Đang thử Server ${sourceIndex + 1}/${currentChannel.sources.length}${useProxy ? ' (Qua Proxy)' : ''}...`;
+
+      // Hạn giờ 4 giây: Nếu không load được sẽ tự đổi nguồn
       timeoutTimer = setTimeout(() => {
-        console.warn(`Server ${sourceIndex + 1} quá thời gian chờ, tự động nhảy nguồn tiếp theo...`);
-        playChannel(channelIndex, sourceIndex + 1);
-      }, 4500);
+        console.warn(`Server ${sourceIndex + 1} hết thời gian chờ, chuyển sang nguồn tiếp theo...`);
+        if (!useProxy) {
+          // Thử lại chính server này thông qua CORS Proxy trước khi chuyển sang Server kế tiếp
+          playChannel(channelIndex, sourceIndex, true);
+        } else {
+          playChannel(channelIndex, sourceIndex + 1, false);
+        }
+      }, 4000);
 
       if (Hls.isSupported()) {
-        hls.destroy();
         hls = new Hls({
-          manifestLoadingTimeOut: 3000,
+          manifestLoadingTimeOut: 3500,
           manifestLoadingMaxRetry: 0,
-          fragLoadingTimeOut: 3000,
-          fragLoadingMaxRetry: 0
+          fragLoadingTimeOut: 3500,
+          fragLoadingMaxRetry: 0,
+          enableWorker: true
         });
 
-        hls.loadSource(rawUrl);
+        hls.loadSource(targetUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
@@ -247,12 +265,17 @@
         hls.on(Hls.Events.ERROR, function (event, data) {
           if (data.fatal) {
             clearTimeout(timeoutTimer);
-            playChannel(channelIndex, sourceIndex + 1);
+            if (!useProxy) {
+              playChannel(channelIndex, sourceIndex, true);
+            } else {
+              playChannel(channelIndex, sourceIndex + 1, false);
+            }
           }
         });
 
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = rawUrl;
+        // Hỗ trợ Safari / iOS
+        video.src = targetUrl;
         video.onloadeddata = () => {
           clearTimeout(timeoutTimer);
           statusText.style.color = "#3fb950";
@@ -261,11 +284,16 @@
         };
         video.onerror = () => {
           clearTimeout(timeoutTimer);
-          playChannel(channelIndex, sourceIndex + 1);
+          if (!useProxy) {
+            playChannel(channelIndex, sourceIndex, true);
+          } else {
+            playChannel(channelIndex, sourceIndex + 1, false);
+          }
         };
       }
     }
 
+    // Chạy chương trình
     loadM3U();
   </script>
 </body>
