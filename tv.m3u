@@ -120,9 +120,12 @@ https://liveatmvng.vtvprime.vn/live/data8/SCTV3/Live_DASHDRM/SCTV3.mpd
 #KODIPROP:inputstream.adaptive.license_key=https://vpsttt.vietanhtv.top/sctv/cleankey.php?id=sctv4
 https://liveatmvng.vtvprime.vn/live/data8/SCTV4/Live_DASHDRM/SCTV4.mpd
 
-#EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/sctv6hd.png" group-title="SCTV",SCTV6 HD
-#EXTVLCOPT:http-user-agent=VThanhTivi
-https://vtvgolive-sctvdrm.vtvdigital.vn/manifest/sctv6/master.m3u8
+#EXTINF:-1 tvg-id="sctv16hd" group-title="SCTV" tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/sctv16hd.png", SCTV16 HD
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36
+#KODIPROP:inputstream.adaptive.manifest_type=mpd
+#KODIPROP:inputstream.adaptive.license_type=clearkey
+#KODIPROP:inputstream.adaptive.license_key=https://vpsttt.vietanhtv.top/sctv/cleankey.php?id=sctv16
+https://liveatmvng.vtvprime.vn/live/data8/SCTV16/Live_DASHDRM/SCTV16.mpd
 
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/sctv7hd.png" group-title="SCTV",SCTV7 HD
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36
