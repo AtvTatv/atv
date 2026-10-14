@@ -341,13 +341,13 @@ https://live.fptplay53.net/fnxsd1/tuyenquang_hls.smil/chunklist.m3u8
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/tayninh1.jpg" group-title="Địa Phương",Tây Ninh 1
 https://freem3u.xyz/api/live/play.m3u8?vid=72
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/vinhlong1hd.jpg" group-title="Địa Phương",Vĩnh Long 1
-https://live.fptplay53.net/live/media/vinhlong1/live247-hls-avc/index.m3u8
+https://dethich.pw/thvl1/index.m3u8
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/vinhlong2hd.jpg" group-title="Địa Phương",Vĩnh Long 2
-https://live.fptplay53.net/epzhd2/vinhlong2_vhls.smil/chunklist_b5000000.m3u8
+https://1011154949.vnns.net/CDN-FPT02/THVL2-HD-1080p/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/vinhlong3hd.jpg" group-title="Địa Phương",Vĩnh Long 3
-https://live.fptplay53.net/epzhd2/vinhlong3_vhls.smil/chunklist_b5000000.m3u8
+https://dethich.pw/thvl3/index.m3u8
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/vinhlong4hd.png" group-title="Địa Phương",Vĩnh Long 4
-https://live.fptplay53.net/epzhd2/vinhlong4-hd_vhls.smil/chunklist.m3u8
+https://dethich.pw/thvl4/index.m3u8
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/vinhlong5hd.jpg" group-title="Địa Phương",Vĩnh Long 5
 https://freem3u.xyz/api/live/play.m3u8?vid=91
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/dienbien.png" group-title="Địa Phương",Điện Biên
@@ -406,7 +406,7 @@ https://tv.vietanhtv.top/tv360/tv360.php?id=169&expires=1785854399&token=ce5c877
 
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/htvthethaohd.jpg" group-title="Thể Thao",HTV Thể Thao
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0
-https://live.fptplay53.net/epzhd1/htvcthethao_vhls.smil/chunklist_b5000000.m3u8
+https://dethich.pw/htvthethao/index.m3u8
 #EXTINF:-1 tvg-logo="https://cdn.jsdelivr.net/gh/quantv25/iptv-assets@main/logos/sctv15hd.png" group-title="Thể Thao", SCTV15 HD
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36
 #KODIPROP:inputstream.adaptive.manifest_type=mpd
